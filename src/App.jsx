@@ -122,34 +122,32 @@ export default function SukaMajuManager() {
     setLog((l) => [{ id: uid(), masa: new Date().toISOString(), userNama: currentUser?.nama || "Sistem", aksi }, ...l]);
   };
 
-  /* ---- load/save ---- */
+  /* ---- load/save (localStorage — jalan kat mana-mana browser/hosting) ---- */
   useEffect(() => {
-    (async () => {
-      const keys = [
-        ["sm-users", setUsers, SEED_USERS],
-        ["sm-produk", setProduk, []],
-        ["sm-jualan", setJualan, []],
-        ["sm-restock", setRestock, []],
-        ["sm-hutang", setHutang, []],
-        ["sm-expense", setExpense, []],
-        ["sm-log", setLog, []],
-        ["sm-settings", setSettings, { namaPerniagaan: "SUKA MAJU" }],
-      ];
-      for (const [key, setter, fallback] of keys) {
-        try {
-          const r = await window.storage.get(key);
-          setter(r ? JSON.parse(r.value) : fallback);
-        } catch (e) {
-          setter(fallback);
-        }
+    const keys = [
+      ["sm-users", setUsers, SEED_USERS],
+      ["sm-produk", setProduk, []],
+      ["sm-jualan", setJualan, []],
+      ["sm-restock", setRestock, []],
+      ["sm-hutang", setHutang, []],
+      ["sm-expense", setExpense, []],
+      ["sm-log", setLog, []],
+      ["sm-settings", setSettings, { namaPerniagaan: "SUKA MAJU" }],
+    ];
+    for (const [key, setter, fallback] of keys) {
+      try {
+        const raw = localStorage.getItem(key);
+        setter(raw ? JSON.parse(raw) : fallback);
+      } catch (e) {
+        setter(fallback);
       }
-      setLoaded(true);
-    })();
+    }
+    setLoaded(true);
   }, []);
 
   const persist = (key, val) => {
     if (!loaded) return;
-    window.storage.set(key, JSON.stringify(val)).catch(() => {});
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
   };
   useEffect(() => persist("sm-users", users), [users, loaded]);
   useEffect(() => persist("sm-produk", produk), [produk, loaded]);
@@ -159,6 +157,7 @@ export default function SukaMajuManager() {
   useEffect(() => persist("sm-expense", expense), [expense, loaded]);
   useEffect(() => persist("sm-log", log), [log, loaded]);
   useEffect(() => persist("sm-settings", settings), [settings, loaded]);
+
 
   /* ---- derived ---- */
   const stokRendah = produk.filter((p) => p.stok <= (p.minStok ?? 5));
@@ -936,6 +935,29 @@ function Laporan({ ctx }) {
     showToast("Perbelanjaan direkod");
   };
 
+  const [confirmTarget, setConfirmTarget] = useState(null); // { type: "one"|"all", e? }
+
+  const delExpense = (e) => setConfirmTarget({ type: "one", e });
+
+  const resetAllExpense = () => {
+    if (expense.length === 0) return showToast("Tiada rekod untuk direset");
+    setConfirmTarget({ type: "all" });
+  };
+
+  const doConfirm = () => {
+    if (confirmTarget.type === "one") {
+      const e = confirmTarget.e;
+      setExpense((arr) => arr.filter((x) => x.id !== e.id));
+      addLog(`Padam perbelanjaan: ${e.kategori} (${fmt(e.jumlah)})`);
+      showToast("Rekod dipadam");
+    } else if (confirmTarget.type === "all") {
+      addLog(`Reset semua rekod perbelanjaan (${expense.length} rekod dipadam)`);
+      setExpense([]);
+      showToast("Semua perbelanjaan direset");
+    }
+    setConfirmTarget(null);
+  };
+
   const exportCSV = () => {
     const rows = [["Tarikh", "Masa", "Item", "Kuantiti", "Harga Jual", "Jumlah"]];
     jFiltered.forEach((j) => j.items.forEach((it) => rows.push([j.tarikh, j.masa, it.nama, it.qty, it.hargaJual, it.hargaJual * it.qty])));
@@ -979,12 +1001,22 @@ function Laporan({ ctx }) {
 
       <button className="smTap" onClick={() => setShowExpForm(true)} style={{ ...primaryBtn(t), background: t.surface2, color: t.ink, border: `1px solid ${t.hair}` }}><Plus size={16} /> Tambah Perbelanjaan</button>
 
-      <div style={{ fontSize: 12, color: t.muted, fontWeight: 700 }}>PERBELANJAAN — {periodLabel[period]}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ fontSize: 12, color: t.muted, fontWeight: 700 }}>PERBELANJAAN — {periodLabel[period]}</div>
+        {expense.length > 0 && (
+          <button className="smTap" onClick={resetAllExpense} style={{ background: "none", border: "none", color: t.red, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700 }}>
+            <Trash2 size={13} /> Reset Semua
+          </button>
+        )}
+      </div>
       {eFiltered.length === 0 && <div style={{ fontSize: 12.5, color: t.muted }}>Tiada perbelanjaan direkod.</div>}
       {eFiltered.map((e) => (
-        <Card key={e.id} style={{ padding: "10px 14px", display: "flex", justifyContent: "space-between" }}>
+        <Card key={e.id} style={{ padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div><div style={{ fontWeight: 700, fontSize: 13 }}>{e.kategori}</div><div style={{ fontSize: 11, color: t.muted }}>{dayLabel(e.tarikh)} · {e.userNama}</div></div>
-          <div style={{ fontWeight: 700, color: t.red }}>{fmt(e.jumlah)}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ fontWeight: 700, color: t.red }}>{fmt(e.jumlah)}</div>
+            <button className="smTap" onClick={() => delExpense(e)} style={{ background: "none", border: "none", color: t.muted, cursor: "pointer", padding: 2, display: "flex" }}><Trash2 size={14} /></button>
+          </div>
         </Card>
       ))}
 
@@ -994,6 +1026,22 @@ function Laporan({ ctx }) {
             <Input label="Kategori" value={expForm.kategori} onChange={(v) => setExpForm((f) => ({ ...f, kategori: v }))} placeholder="cth: Sewa gerai" />
             <Input label="Jumlah" type="number" value={expForm.jumlah} onChange={(v) => setExpForm((f) => ({ ...f, jumlah: v }))} placeholder="50.00" />
             <button onClick={addExpense} className="smTap" style={primaryBtn(t)}>Simpan</button>
+          </div>
+        </BottomSheet>
+      )}
+
+      {confirmTarget && (
+        <BottomSheet onClose={() => setConfirmTarget(null)} title={confirmTarget.type === "all" ? "Reset Semua Perbelanjaan" : "Padam Rekod"}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ fontSize: 13.5, color: t.ink, lineHeight: 1.5 }}>
+              {confirmTarget.type === "all"
+                ? `Padam kekal SEMUA ${expense.length} rekod perbelanjaan? Tindakan ini tidak boleh dibatalkan.`
+                : `Padam rekod "${confirmTarget.e.kategori}" (${fmt(confirmTarget.e.jumlah)})? Tindakan ini tidak boleh dibatalkan.`}
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setConfirmTarget(null)} className="smTap" style={{ flex: 1, background: t.surface2, border: `1px solid ${t.hair}`, color: t.ink, borderRadius: 10, padding: "11px", fontWeight: 700, fontSize: 13.5, cursor: "pointer" }}>Batal</button>
+              <button onClick={doConfirm} className="smTap" style={{ flex: 1, background: t.red, border: "none", color: "#fff", borderRadius: 10, padding: "11px", fontWeight: 700, fontSize: 13.5, cursor: "pointer" }}>Ya, Padam</button>
+            </div>
           </div>
         </BottomSheet>
       )}
@@ -1139,11 +1187,23 @@ function ActivityLog({ ctx }) {
 
 /* ---------------- Settings ---------------- */
 function SettingsTab({ ctx }) {
-  const { settings, setSettings, users, setUsers, addLog, showToast, T: t } = ctx;
+  const { settings, setSettings, users, setUsers, addLog, showToast, T: t, jualan, setJualan, restock, setRestock, hutang, setHutang, expense, setExpense } = ctx;
   const [nama, setNama] = useState(settings.namaPerniagaan);
-  const [modal, setModal] = useState(null); // 'new' user
+  const [modal, setModal] = useState(null); // 'new' user | 'resetAkaun'
   const [uform, setUform] = useState({ nama: "", role: "Pekerja", pin: "" });
   const logoRef = useRef();
+
+  const totalRekod = jualan.length + restock.length + hutang.length + expense.length;
+
+  const resetPerakaunan = () => {
+    setJualan([]);
+    setRestock([]);
+    setHutang([]);
+    setExpense([]);
+    addLog(`Reset Perakaunan: padam ${totalRekod} rekod (Jualan, Restock, Hutang, Perbelanjaan) — Stok produk dikekalkan`);
+    showToast("Perakaunan direset");
+    setModal(null);
+  };
 
   const saveName = () => { setSettings((s) => ({ ...s, namaPerniagaan: nama })); addLog("Kemas kini nama perniagaan"); showToast("Disimpan"); };
 
@@ -1217,6 +1277,36 @@ function SettingsTab({ ctx }) {
             </label>
             <Input label="PIN 4-digit" value={uform.pin} onChange={(v) => setUform((f) => ({ ...f, pin: v.replace(/\D/g, "").slice(0, 4) }))} placeholder="1234" />
             <button onClick={addUser} className="smTap" style={primaryBtn(t)}>Simpan</button>
+          </div>
+        </BottomSheet>
+      )}
+
+      <div style={{ fontSize: 12, color: t.red, fontWeight: 700, marginTop: 8 }}>ZON BAHAYA</div>
+      <Card style={{ border: `1px solid ${t.red}55` }}>
+        <div style={{ fontWeight: 700, fontSize: 13.5, marginBottom: 4 }}>Reset Perakaunan</div>
+        <div style={{ fontSize: 12, color: t.muted, lineHeight: 1.5, marginBottom: 12 }}>
+          Padam kekal semua rekod <b>Jualan, Restock, Hutang & Perbelanjaan</b> ({totalRekod} rekod). Senarai produk & stok kekal seperti biasa. Tindakan ini tidak boleh dibatalkan.
+        </div>
+        <button
+          className="smTap"
+          onClick={() => setModal("resetAkaun")}
+          disabled={totalRekod === 0}
+          style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: totalRekod === 0 ? t.surface2 : "rgba(229,83,75,0.12)", border: `1px solid ${t.red}`, color: t.red, borderRadius: 10, padding: "11px", fontWeight: 700, fontSize: 13, cursor: totalRekod === 0 ? "not-allowed" : "pointer", opacity: totalRekod === 0 ? 0.5 : 1 }}
+        >
+          <Trash2 size={15} /> Reset Perakaunan
+        </button>
+      </Card>
+
+      {modal === "resetAkaun" && (
+        <BottomSheet onClose={() => setModal(null)} title="Sahkan Reset Perakaunan">
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ fontSize: 13.5, color: t.ink, lineHeight: 1.5 }}>
+              Kau akan padam kekal <b>{jualan.length}</b> jualan, <b>{restock.length}</b> restock, <b>{hutang.length}</b> hutang, dan <b>{expense.length}</b> perbelanjaan. Stok produk tidak terjejas. Tindakan ini <b>tidak boleh dibatalkan</b>.
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setModal(null)} className="smTap" style={{ flex: 1, background: t.surface2, border: `1px solid ${t.hair}`, color: t.ink, borderRadius: 10, padding: "11px", fontWeight: 700, fontSize: 13.5, cursor: "pointer" }}>Batal</button>
+              <button onClick={resetPerakaunan} className="smTap" style={{ flex: 1, background: t.red, border: "none", color: "#fff", borderRadius: 10, padding: "11px", fontWeight: 700, fontSize: 13.5, cursor: "pointer" }}>Ya, Reset</button>
+            </div>
           </div>
         </BottomSheet>
       )}
