@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   LayoutGrid, ShoppingCart, Package, Users, FileText, Settings as SettingsIcon,
   Plus, Minus, Trash2, X, Search, Bell, Menu, LogOut, TrendingUp, TrendingDown,
@@ -1001,24 +1002,53 @@ function Laporan({ ctx }) {
 
       <button className="smTap" onClick={() => setShowExpForm(true)} style={{ ...primaryBtn(t), background: t.surface2, color: t.ink, border: `1px solid ${t.hair}` }}><Plus size={16} /> Tambah Perbelanjaan</button>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ fontSize: 12, color: t.muted, fontWeight: 700 }}>PERBELANJAAN — {periodLabel[period]}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+        <div style={{ fontSize: 12, color: t.muted, fontWeight: 700, letterSpacing: 0.4 }}>PERBELANJAAN</div>
         {expense.length > 0 && (
-          <button className="smTap" onClick={resetAllExpense} style={{ background: "none", border: "none", color: t.red, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700 }}>
-            <Trash2 size={13} /> Reset Semua
+          <button className="smTap" onClick={resetAllExpense} style={{ background: "none", border: "none", color: t.muted, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: 11.5, fontWeight: 600 }}>
+            <Trash2 size={12} /> Reset semua
           </button>
         )}
       </div>
-      {eFiltered.length === 0 && <div style={{ fontSize: 12.5, color: t.muted }}>Tiada perbelanjaan direkod.</div>}
-      {eFiltered.map((e) => (
-        <Card key={e.id} style={{ padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div><div style={{ fontWeight: 700, fontSize: 13 }}>{e.kategori}</div><div style={{ fontSize: 11, color: t.muted }}>{dayLabel(e.tarikh)} · {e.userNama}</div></div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ fontWeight: 700, color: t.red }}>{fmt(e.jumlah)}</div>
-            <button className="smTap" onClick={() => delExpense(e)} style={{ background: "none", border: "none", color: t.muted, cursor: "pointer", padding: 2, display: "flex" }}><Trash2 size={14} /></button>
+
+      {/* Resit perbelanjaan — gaya minimalis moden */}
+      <div style={{ position: "relative", background: t.surface2, borderRadius: 14, border: `1px solid ${t.hair}`, overflow: "hidden" }}>
+        {/* tepi berlubang atas (kesan resit) */}
+        <div style={{ position: "absolute", top: -7, left: 0, right: 0, height: 14, backgroundImage: `radial-gradient(circle at 7px 7px, ${t.bg} 7px, transparent 7.5px)`, backgroundSize: "16px 14px", backgroundRepeat: "repeat-x" }} />
+
+        <div style={{ padding: "20px 18px 6px", textAlign: "center", borderBottom: `1px dashed ${t.hair}`, paddingBottom: 14 }}>
+          <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 13, letterSpacing: 1, color: t.ink }}>{settings.namaPerniagaan}</div>
+          <div style={{ fontSize: 10.5, color: t.muted, marginTop: 2 }}>{periodLabel[period]} · {eFiltered.length} rekod</div>
+        </div>
+
+        <div style={{ padding: "4px 18px" }}>
+          {eFiltered.length === 0 && (
+            <div style={{ fontSize: 12.5, color: t.muted, textAlign: "center", padding: "22px 0", fontStyle: "italic" }}>Tiada perbelanjaan direkod.</div>
+          )}
+          {eFiltered.map((e, i) => (
+            <div key={e.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 0", borderBottom: i < eFiltered.length - 1 ? `1px dashed ${t.hair}` : "none" }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, color: t.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.kategori}</div>
+                <div style={{ fontSize: 10.5, color: t.muted, marginTop: 1 }}>{dayLabel(e.tarikh)} · {e.userNama}</div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, marginLeft: 10 }}>
+                <div style={{ fontFamily: "'Courier New', monospace", fontWeight: 700, fontSize: 13.5, color: t.red }}>{fmt(e.jumlah)}</div>
+                <button className="smTap" onClick={() => delExpense(e)} style={{ background: "none", border: "none", color: t.muted, cursor: "pointer", padding: 2, display: "flex", opacity: 0.6 }}><Trash2 size={13} /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {eFiltered.length > 0 && (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", borderTop: `1px solid ${t.hair}`, marginTop: 4 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: t.ink, letterSpacing: 0.5 }}>JUMLAH</div>
+            <div style={{ fontFamily: "'Courier New', monospace", fontWeight: 800, fontSize: 15, color: t.red }}>{fmt(totalPerbelanjaan)}</div>
           </div>
-        </Card>
-      ))}
+        )}
+
+        {/* tepi berlubang bawah */}
+        <div style={{ position: "absolute", bottom: -7, left: 0, right: 0, height: 14, backgroundImage: `radial-gradient(circle at 7px 7px, ${t.bg} 7px, transparent 7.5px)`, backgroundSize: "16px 14px", backgroundRepeat: "repeat-x" }} />
+      </div>
 
       {showExpForm && (
         <BottomSheet onClose={() => setShowExpForm(false)} title="Tambah Perbelanjaan">
@@ -1047,7 +1077,7 @@ function Laporan({ ctx }) {
       )}
     </div>
 
-    {/* Printable report — hidden on screen, shown only when printing/saving as PDF */}
+    {createPortal(
     <div className="print-area" style={{ display: "none", padding: 32, fontFamily: "Arial, sans-serif", color: "#111" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, borderBottom: "2px solid #111", paddingBottom: 12, marginBottom: 16 }}>
         {settings.logo && <img src={settings.logo} style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover" }} />}
@@ -1089,7 +1119,9 @@ function Laporan({ ctx }) {
       </table>
 
       <div style={{ fontSize: 10.5, color: "#999", marginTop: 24 }}>Dijana automatik oleh {settings.namaPerniagaan} Business Management System.</div>
-    </div>
+    </div>,
+    document.body
+    )}
     </>
   );
 }
