@@ -78,6 +78,19 @@ const SEED_USERS = [
   { id: "u_hakim", nama: "Hakim", role: "Pekerja", pin: "2222" },
 ];
 
+/* ---------------- Responsive breakpoint ---------------- */
+function useBreakpoint() {
+  const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 400);
+  useEffect(() => {
+    const onResize = () => setW(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  if (w >= 1100) return { name: "desktop", maxWidth: 980, posCols: 4, statCols: 4 };
+  if (w >= 700) return { name: "tablet", maxWidth: 720, posCols: 3, statCols: 4 };
+  return { name: "mobile", maxWidth: 480, posCols: 2, statCols: 2 };
+}
+
 /* ---------------- Root App ---------------- */
 export default function SukaMajuManager() {
   const [loaded, setLoaded] = useState(false);
@@ -98,6 +111,7 @@ export default function SukaMajuManager() {
   const [quickOpen, setQuickOpen] = useState(false);
   const [toast, setToast] = useState(null);
   const [dismissedNotif, setDismissedNotif] = useState({});
+  const bp = useBreakpoint();
 
   const showToast = (msg) => {
     setToast(msg);
@@ -157,9 +171,19 @@ export default function SukaMajuManager() {
 
   if (!loaded) {
     return (
-      <div style={{ minHeight: "100vh", background: T.bg, display: "flex", alignItems: "center", justifyContent: "center", color: T.muted, fontFamily: "Inter" }}>
-        <style>{FONT}</style>
-        Memuatkan...
+      <div style={{ minHeight: "100vh", background: T.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: T.muted, fontFamily: "Inter" }}>
+        <style>{FONT}{`
+          @keyframes smPulse { 0%,100% { transform: scale(0.85); opacity: 0.5; } 50% { transform: scale(1.05); opacity: 1; } }
+          @keyframes smDot { 0%,80%,100% { opacity: 0.25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-4px); } }
+        `}</style>
+        <div style={{ width: 46, height: 46, borderRadius: 14, background: T.goldSoft, display: "flex", alignItems: "center", justifyContent: "center", animation: "smPulse 1.4s ease-in-out infinite", marginBottom: 16 }}>
+          <ShieldCheck size={22} color={T.gold} />
+        </div>
+        <div style={{ display: "flex", gap: 5 }}>
+          {[0, 1, 2].map((i) => (
+            <div key={i} style={{ width: 6, height: 6, borderRadius: 99, background: T.gold, animation: `smDot 1.2s ease-in-out ${i * 0.15}s infinite` }} />
+          ))}
+        </div>
       </div>
     );
   }
@@ -171,19 +195,39 @@ export default function SukaMajuManager() {
   const ctx = {
     T, users, setUsers, produk, setProduk, jualan, setJualan, restock, setRestock,
     hutang, setHutang, expense, setExpense, log, settings, setSettings,
-    currentUser, isAdmin, showToast, addLog, stokRendah,
+    currentUser, isAdmin, showToast, addLog, stokRendah, bp,
   };
 
   return (
     <div style={{ minHeight: "100vh", background: T.bg, fontFamily: "'Inter',sans-serif", color: T.ink, display: "flex", justifyContent: "center" }}>
-      <style>{`${FONT} * { box-sizing:border-box; } ::-webkit-scrollbar{width:0;height:0;} @media print { .no-print{display:none !important;} .print-area{display:block !important;} }`}</style>
-      <div style={{ width: "100%", maxWidth: 480, minHeight: "100vh", display: "flex", flexDirection: "column", position: "relative", background: T.bg }}>
+      <style>{`${FONT}
+        * { box-sizing:border-box; }
+        ::-webkit-scrollbar{width:0;height:0;}
+        .smTap{ transition: transform .12s ease, opacity .12s ease; -webkit-tap-highlight-color: transparent; cursor:pointer; }
+        .smTap:active{ transform: scale(0.95); opacity:0.82; }
+        @keyframes smSheetUp { from { transform: translateY(24px) scale(0.98); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+        @keyframes smFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @media print {
+          .no-print { display: none !important; }
+          .print-area { display: block !important; position: absolute; left: 0; top: 0; width: 100%; background: #fff !important; }
+        }
+        @media (min-width: 700px) {
+          .sm-grid-pos { grid-template-columns: repeat(${bp.posCols}, 1fr) !important; }
+          .sm-grid-stat { grid-template-columns: repeat(${bp.statCols}, 1fr) !important; }
+        }
+      `}</style>
+      <div style={{ width: "100%", maxWidth: bp.maxWidth, minHeight: "100vh", display: "flex", flexDirection: "column", position: "relative", background: T.bg, transition: "max-width 0.2s ease" }}>
         {/* Topbar */}
         <div className="no-print" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 12px", position: "sticky", top: 0, background: T.bg, zIndex: 30, borderBottom: `1px solid ${T.hair}` }}>
           <button onClick={() => setDrawerOpen(true)} style={iconBtnStyle}><Menu size={19} color={T.ink} /></button>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 15, letterSpacing: 0.3 }}>{settings.namaPerniagaan}</div>
-            <div style={{ fontSize: 10.5, color: T.muted }}>{currentUser.nama} · {currentUser.role}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {settings.logo && (
+              <img src={settings.logo} alt="logo" style={{ width: 26, height: 26, borderRadius: 7, objectFit: "cover", border: `1px solid ${T.hair}` }} />
+            )}
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 15, letterSpacing: 0.3 }}>{settings.namaPerniagaan}</div>
+              <div style={{ fontSize: 10.5, color: T.muted }}>{currentUser.nama} · {currentUser.role}</div>
+            </div>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
             <button onClick={() => setSearchOpen(true)} style={iconBtnStyle}><Search size={18} color={T.ink} /></button>
@@ -195,24 +239,25 @@ export default function SukaMajuManager() {
         </div>
 
         {/* Content */}
-        <div style={{ flex: 1, padding: "16px 16px 100px", overflowY: "auto" }}>
+        <div className="no-print" style={{ flex: 1, padding: "16px 16px 100px", overflowY: "auto" }}>
           {tab === "dashboard" && <Dashboard ctx={ctx} />}
           {tab === "pos" && <POS ctx={ctx} />}
           {tab === "inventori" && <Inventori ctx={ctx} />}
           {tab === "restock" && <Restock ctx={ctx} />}
           {tab === "hutang" && <Hutang ctx={ctx} />}
           {tab === "laporan" && <Laporan ctx={ctx} />}
+          {tab === "toppembeli" && <TopPembeli ctx={ctx} />}
           {tab === "log" && isAdmin && <ActivityLog ctx={ctx} />}
           {tab === "settings" && isAdmin && <SettingsTab ctx={ctx} />}
         </div>
 
         {/* Bottom nav */}
-        <div className="no-print" style={{ position: "sticky", bottom: 0, display: "flex", background: T.surface, borderTop: `1px solid ${T.hair}`, maxWidth: 480, width: "100%" }}>
+        <div className="no-print" style={{ position: "sticky", bottom: 0, display: "flex", background: T.surface, borderTop: `1px solid ${T.hair}`, maxWidth: bp.maxWidth, width: "100%" }}>
           <NavBtn active={tab === "dashboard"} onClick={() => setTab("dashboard")} icon={LayoutGrid} label="Dashboard" />
           <NavBtn active={tab === "pos"} onClick={() => setTab("pos")} icon={ShoppingCart} label="POS" />
           <NavBtn active={tab === "inventori"} onClick={() => setTab("inventori")} icon={Package} label="Stok" />
           <NavBtn active={tab === "hutang"} onClick={() => setTab("hutang")} icon={Wallet} label="Hutang" />
-          <NavBtn active={["restock", "laporan", "log", "settings"].includes(tab)} onClick={() => setDrawerOpen(true)} icon={Menu} label="Lagi" />
+          <NavBtn active={["restock", "laporan", "toppembeli", "log", "settings"].includes(tab)} onClick={() => setDrawerOpen(true)} icon={Menu} label="Lagi" />
         </div>
 
         {/* Quick action FAB */}
@@ -247,15 +292,15 @@ const iconBtnStyle = { background: "none", border: "none", cursor: "pointer", pa
 
 function NavBtn({ active, onClick, icon: Icon, label }) {
   return (
-    <button onClick={onClick} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "10px 4px", background: "none", border: "none", cursor: "pointer", color: active ? T.gold : T.muted }}>
+    <button onClick={onClick} className="smTap" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "10px 4px", background: "none", border: "none", color: active ? T.gold : T.muted }}>
       <Icon size={19} strokeWidth={active ? 2.4 : 2} />
       <span style={{ fontSize: 10.5, fontWeight: active ? 700 : 500 }}>{label}</span>
     </button>
   );
 }
 
-function Card({ children, style }) {
-  return <div style={{ background: T.surface, border: `1px solid ${T.hair}`, borderRadius: 16, padding: 16, ...style }}>{children}</div>;
+function Card({ children, style, className }) {
+  return <div className={className} style={{ background: T.surface, border: `1px solid ${T.hair}`, borderRadius: 16, padding: 16, ...style }}>{children}</div>;
 }
 
 /* ---------------- Login ---------------- */
@@ -280,60 +325,76 @@ function LoginScreen({ users, settings, onLogin }) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: T.bg, display: "flex", justifyContent: "center", fontFamily: "'Inter',sans-serif", color: T.ink }}>
-      <style>{FONT}</style>
-      <div style={{ width: "100%", maxWidth: 420, padding: "60px 24px", display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <div style={{ width: 56, height: 56, borderRadius: 16, background: T.goldSoft, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
-          <ShieldCheck size={26} color={T.gold} />
+    <div style={{ minHeight: "100vh", background: `radial-gradient(circle at 15% 8%, rgba(201,162,75,0.16), transparent 45%), radial-gradient(circle at 88% 92%, rgba(76,141,255,0.10), transparent 40%), ${T.bg}`, display: "flex", justifyContent: "center", fontFamily: "'Inter',sans-serif", color: T.ink, position: "relative", overflow: "hidden" }}>
+      <style>{`${FONT}
+        @keyframes smFloat1 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(14px,-18px); } }
+        @keyframes smFloat2 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-16px,16px); } }
+        @keyframes smShake { 0%,100% { transform: translateX(0); } 20%,60% { transform: translateX(-8px); } 40%,80% { transform: translateX(8px); } }
+        @keyframes smRise { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .smTap{ transition: transform .12s ease, opacity .12s ease; -webkit-tap-highlight-color: transparent; cursor:pointer; }
+        .smTap:active{ transform: scale(0.94); opacity:0.8; }
+      `}</style>
+      <div style={{ position: "absolute", width: 260, height: 260, borderRadius: "50%", background: "rgba(201,162,75,0.10)", filter: "blur(60px)", top: "-8%", left: "-10%", animation: "smFloat1 9s ease-in-out infinite" }} />
+      <div style={{ position: "absolute", width: 220, height: 220, borderRadius: "50%", background: "rgba(76,141,255,0.09)", filter: "blur(60px)", bottom: "-6%", right: "-8%", animation: "smFloat2 11s ease-in-out infinite" }} />
+
+      <div style={{ width: "100%", maxWidth: 420, padding: "48px 20px", display: "flex", flexDirection: "column", alignItems: "center", position: "relative", zIndex: 1 }}>
+        <div style={{ width: 60, height: 60, borderRadius: 18, background: T.goldSoft, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14, overflow: "hidden", boxShadow: "0 10px 28px rgba(201,162,75,0.22)", animation: "smRise 0.5s ease" }}>
+          {settings.logo ? <img src={settings.logo} alt="logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <ShieldCheck size={28} color={T.gold} />}
         </div>
-        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 800, fontSize: 22, letterSpacing: 0.3 }}>{settings.namaPerniagaan}</div>
-        <div style={{ color: T.muted, fontSize: 13, marginTop: 2, marginBottom: 30 }}>Business Management System</div>
+        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 800, fontSize: 23, letterSpacing: 0.3, animation: "smRise 0.5s ease 0.05s backwards" }}>{settings.namaPerniagaan}</div>
+        <div style={{ color: T.muted, fontSize: 13, marginTop: 2, marginBottom: 28, animation: "smRise 0.5s ease 0.1s backwards" }}>Business Management System</div>
 
-        {!selected && (
-          <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ fontSize: 12, color: T.muted, fontWeight: 700, marginBottom: 2 }}>PILIH PENGGUNA</div>
-            {users.map((u) => (
-              <button key={u.id} onClick={() => setSelected(u)} style={{ display: "flex", alignItems: "center", gap: 12, background: T.surface, border: `1px solid ${T.hair}`, borderRadius: 14, padding: "13px 16px", cursor: "pointer", color: T.ink, textAlign: "left" }}>
-                <div style={{ width: 38, height: 38, borderRadius: 10, background: T.goldSoft, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Sora',sans-serif", fontWeight: 700, color: T.gold }}>
-                  {u.nama[0]}
-                </div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 14.5 }}>{u.nama}</div>
-                  <div style={{ fontSize: 11.5, color: T.muted }}>{u.role}</div>
-                </div>
-                <ChevronRight size={16} color={T.muted} style={{ marginLeft: "auto" }} />
-              </button>
-            ))}
-          </div>
-        )}
-
-        {selected && (
-          <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <button onClick={() => { setSelected(null); setPin(""); setError(false); }} style={{ alignSelf: "flex-start", background: "none", border: "none", color: T.muted, display: "flex", alignItems: "center", gap: 4, cursor: "pointer", fontSize: 12.5, marginBottom: 18 }}>
-              <ChevronLeft size={14} /> Tukar pengguna
-            </button>
-            <div style={{ width: 46, height: 46, borderRadius: 10, background: T.goldSoft, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Sora',sans-serif", fontWeight: 700, color: T.gold, marginBottom: 8 }}>
-              {selected.nama[0]}
-            </div>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>{selected.nama}</div>
-            <div style={{ fontSize: 12, color: T.muted, marginBottom: 20, display: "flex", alignItems: "center", gap: 5 }}><KeyRound size={12} /> Masukkan PIN 4-digit</div>
-            <div style={{ display: "flex", gap: 12, marginBottom: 26 }}>
-              {[0, 1, 2, 3].map((i) => (
-                <div key={i} style={{ width: 14, height: 14, borderRadius: 99, background: pin.length > i ? (error ? T.red : T.gold) : T.hair, transition: "background 0.15s" }} />
+        <div style={{
+          width: "100%", background: "rgba(23,24,26,0.55)", backdropFilter: "blur(22px)", WebkitBackdropFilter: "blur(22px)",
+          border: "1px solid rgba(255,255,255,0.08)", borderRadius: 24, padding: 22,
+          boxShadow: "0 24px 60px rgba(0,0,0,0.35)", animation: "smRise 0.5s ease 0.15s backwards",
+        }}>
+          {!selected && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ fontSize: 11.5, color: T.muted, fontWeight: 700, marginBottom: 2, letterSpacing: 0.4 }}>PILIH PENGGUNA</div>
+              {users.map((u) => (
+                <button key={u.id} className="smTap" onClick={() => setSelected(u)} style={{ display: "flex", alignItems: "center", gap: 12, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 15, padding: "13px 15px", color: T.ink, textAlign: "left" }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 11, background: T.goldSoft, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Sora',sans-serif", fontWeight: 700, color: T.gold, flexShrink: 0 }}>
+                    {u.nama[0]}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14.5 }}>{u.nama}</div>
+                    <div style={{ fontSize: 11.5, color: T.muted }}>{u.role}</div>
+                  </div>
+                  <ChevronRight size={16} color={T.muted} style={{ marginLeft: "auto" }} />
+                </button>
               ))}
             </div>
-            {error && <div style={{ color: T.red, fontSize: 12.5, marginTop: -16, marginBottom: 16 }}>PIN salah, cuba lagi</div>}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, width: 240 }}>
-              {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "back"].map((d, i) =>
-                d === "" ? <div key={i} /> : (
-                  <button key={i} onClick={() => press(d)} style={{ width: 68, height: 56, borderRadius: 14, background: T.surface, border: `1px solid ${T.hair}`, color: T.ink, fontSize: 18, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {d === "back" ? "⌫" : d}
-                  </button>
-                )
-              )}
+          )}
+
+          {selected && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <button className="smTap" onClick={() => { setSelected(null); setPin(""); setError(false); }} style={{ alignSelf: "flex-start", background: "none", border: "none", color: T.muted, display: "flex", alignItems: "center", gap: 4, fontSize: 12.5, marginBottom: 16 }}>
+                <ChevronLeft size={14} /> Tukar pengguna
+              </button>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: T.goldSoft, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Sora',sans-serif", fontWeight: 700, color: T.gold, marginBottom: 8 }}>
+                {selected.nama[0]}
+              </div>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>{selected.nama}</div>
+              <div style={{ fontSize: 12, color: T.muted, marginBottom: 18, display: "flex", alignItems: "center", gap: 5 }}><KeyRound size={12} /> Masukkan PIN 4-digit</div>
+              <div style={{ display: "flex", gap: 12, marginBottom: 22, animation: error ? "smShake 0.4s ease" : "none" }}>
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} style={{ width: 13, height: 13, borderRadius: 99, background: pin.length > i ? (error ? T.red : T.gold) : "rgba(255,255,255,0.12)", transition: "background 0.15s, transform 0.15s", transform: pin.length > i ? "scale(1.1)" : "scale(1)" }} />
+                ))}
+              </div>
+              {error && <div style={{ color: T.red, fontSize: 12.5, marginTop: -12, marginBottom: 14 }}>PIN salah, cuba lagi</div>}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, width: "100%", maxWidth: 240 }}>
+                {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "back"].map((d, i) =>
+                  d === "" ? <div key={i} /> : (
+                    <button key={i} className="smTap" onClick={() => press(d)} style={{ height: 54, borderRadius: 14, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)", color: T.ink, fontSize: 18, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {d === "back" ? "⌫" : d}
+                    </button>
+                  )
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
@@ -373,7 +434,7 @@ function Dashboard({ ctx }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      <div className="sm-grid-stat" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <StatCard label="JUALAN HARI INI" value={fmt(todayTotal)} sub={`${todaySales.length} transaksi`} color={t.ink} />
         <StatCard label="UNTUNG HARI INI" value={fmt(todayUntung)} sub="margin bersih" color={t.green} />
         <StatCard label="CASH SEMASA" value={fmt(cashSemasa)} sub="anggaran" color={t.ink} />
@@ -439,6 +500,7 @@ function POS({ ctx }) {
   const { produk, setProduk, setJualan, currentUser, addLog, showToast, T: t } = ctx;
   const [cart, setCart] = useState({});
   const [cat, setCat] = useState("Semua");
+  const [burst, setBurst] = useState(null);
 
   const kategoris = ["Semua", ...Array.from(new Set(produk.map((p) => p.kategori || "Lain")))];
   const list = cat === "Semua" ? produk : produk.filter((p) => (p.kategori || "Lain") === cat);
@@ -455,29 +517,42 @@ function POS({ ctx }) {
   const total = items.reduce((s, [id, q]) => { const p = produk.find((x) => x.id === id); return s + (p ? p.hargaJual * q : 0); }, 0);
   const untung = items.reduce((s, [id, q]) => { const p = produk.find((x) => x.id === id); return s + (p ? (p.hargaJual - p.hargaModal) * q : 0); }, 0);
 
-  const checkout = () => {
+  const [showNamaForm, setShowNamaForm] = useState(false);
+  const [namaPembeli, setNamaPembeli] = useState("");
+
+  const bukaFormNama = () => {
     if (items.length === 0) return showToast("Belum pilih barang");
+    setNamaPembeli("");
+    setShowNamaForm(true);
+  };
+
+  const finalizeCheckout = () => {
+    const nama = namaPembeli.trim();
+    if (!nama) return showToast("Sila isi nama pembeli dulu");
     const its = items.map(([id, q]) => { const p = produk.find((x) => x.id === id); return { produkId: id, nama: p.nama, qty: q, hargaJual: p.hargaJual, hargaModal: p.hargaModal }; });
-    setJualan((j) => [{ id: uid(), tarikh: todayStr(), masa: new Date().toLocaleTimeString("ms-MY", { hour: "2-digit", minute: "2-digit" }), userId: currentUser.id, userNama: currentUser.nama, items: its, total, untung }, ...j]);
+    setJualan((j) => [{ id: uid(), tarikh: todayStr(), masa: new Date().toLocaleTimeString("ms-MY", { hour: "2-digit", minute: "2-digit" }), userId: currentUser.id, userNama: currentUser.nama, pembeli: nama, items: its, total, untung }, ...j]);
     setProduk((p) => p.map((prod) => { const f = items.find(([id]) => id === prod.id); return f ? { ...prod, stok: Math.max(0, prod.stok - f[1]) } : prod; }));
-    addLog(`${currentUser.nama} jual ${its.length} jenis barang (${fmt(total)})`);
+    addLog(`${currentUser.nama} jual kepada ${nama} (${fmt(total)})`);
     setCart({});
-    showToast("Jualan direkod: " + fmt(total));
+    setShowNamaForm(false);
+    setBurst(fmt(total));
+    setTimeout(() => setBurst(null), 1300);
   };
 
   if (produk.length === 0) return <EmptyState text="Tambah produk dulu kat tab Stok sebelum boleh jual." />;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {burst && <SuccessBurst amount={burst} />}
       <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
         {kategoris.map((k) => (
           <button key={k} onClick={() => setCat(k)} style={{ whiteSpace: "nowrap", padding: "7px 14px", borderRadius: 999, border: `1px solid ${cat === k ? t.gold : t.hair}`, background: cat === k ? t.goldSoft : "transparent", color: cat === k ? t.gold : t.muted, fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>{k}</button>
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      <div className="sm-grid-pos" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         {list.map((p) => (
-          <Card key={p.id} style={{ padding: 10 }}>
+          <Card key={p.id} className="smTap" style={{ padding: 10 }}>
             <div style={{ width: "100%", height: 84, borderRadius: 10, background: t.surface2, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", marginBottom: 8 }}>
               {p.gambar ? <img src={p.gambar} alt={p.nama} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Package size={26} color={t.muted} />}
             </div>
@@ -485,9 +560,9 @@ function POS({ ctx }) {
             <div style={{ fontSize: 12, color: t.gold, fontWeight: 700, marginTop: 2 }}>{fmt(p.hargaJual)}</div>
             <div style={{ fontSize: 10.5, color: p.stok === 0 ? t.red : t.muted, marginTop: 1 }}>stok {p.stok}</div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
-              <button onClick={() => add(p.id, -1)} style={miniBtn(t)}><Minus size={13} /></button>
+              <button onClick={() => add(p.id, -1)} className="smTap" style={miniBtn(t)}><Minus size={13} /></button>
               <span style={{ fontWeight: 800, fontSize: 13 }}>{cart[p.id] || 0}</span>
-              <button onClick={() => add(p.id, 1)} disabled={p.stok === 0} style={{ ...miniBtn(t), background: p.stok === 0 ? t.hair : t.gold, color: "#141414", border: "none" }}><Plus size={13} /></button>
+              <button onClick={() => add(p.id, 1)} disabled={p.stok === 0} className="smTap" style={{ ...miniBtn(t), background: p.stok === 0 ? t.hair : t.gold, color: "#141414", border: "none" }}><Plus size={13} /></button>
             </div>
           </Card>
         ))}
@@ -501,9 +576,25 @@ function POS({ ctx }) {
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontFamily: "'Sora',sans-serif", fontSize: 18, fontWeight: 800 }}>{fmt(total)}</span>
-            <button onClick={checkout} style={{ background: t.gold, color: "#141414", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 800, cursor: "pointer" }}>Jual</button>
+            <button onClick={bukaFormNama} className="smTap" style={{ background: t.gold, color: "#141414", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 800 }}>Jual</button>
           </div>
         </div>
+      )}
+
+      {showNamaForm && (
+        <BottomSheet onClose={() => setShowNamaForm(false)} title="Nama Pembeli">
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ fontSize: 12.5, color: t.muted, marginBottom: -2 }}>
+              Wajib isi nama pembeli untuk setiap jualan (rekod siapa beli apa).
+            </div>
+            <Input label="Nama pembeli" value={namaPembeli} onChange={setNamaPembeli} placeholder="cth: Bilik 12 - Danish" />
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: t.muted, padding: "4px 2px" }}>
+              <span>Jumlah</span>
+              <span style={{ fontWeight: 700, color: t.ink }}>{fmt(total)}</span>
+            </div>
+            <button onClick={finalizeCheckout} className="smTap" style={primaryBtn(t)}>Sahkan Jualan</button>
+          </div>
+        </BottomSheet>
       )}
     </div>
   );
@@ -513,6 +604,33 @@ const miniBtn = (t) => ({ width: 26, height: 26, borderRadius: 999, border: `1px
 
 function EmptyState({ text }) {
   return <div style={{ textAlign: "center", color: T.muted, padding: "50px 20px", fontSize: 13.5 }}>{text}</div>;
+}
+
+/* Celebratory "cha-ching" burst shown briefly after a successful sale */
+function SuccessBurst({ amount }) {
+  const particles = ["💰", "✨", "🪙", "✨", "💵", "⭐"];
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
+      <style>{`
+        @keyframes smBounceIn { 0% { transform: scale(0.3); opacity: 0; } 55% { transform: scale(1.12); opacity: 1; } 75% { transform: scale(0.95); } 100% { transform: scale(1); } }
+        @keyframes smFadeOut { 0%,70% { opacity: 1; } 100% { opacity: 0; } }
+        @keyframes smParticle { 0% { transform: translate(0,0) scale(0.6); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(1.1); opacity: 0; } }
+      `}</style>
+      <div style={{ position: "relative", animation: "smFadeOut 1.3s ease forwards" }}>
+        {particles.map((p, i) => {
+          const angle = (i / particles.length) * Math.PI * 2;
+          const dx = Math.cos(angle) * 70, dy = Math.sin(angle) * 70;
+          return (
+            <span key={i} style={{ position: "absolute", left: "50%", top: "50%", fontSize: 20, animation: `smParticle 0.9s ease-out forwards`, "--dx": `${dx}px`, "--dy": `${dy}px` }}>{p}</span>
+          );
+        })}
+        <div style={{ background: T.gold, color: "#141414", borderRadius: 20, padding: "18px 30px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, animation: "smBounceIn 0.45s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: "0 12px 32px rgba(201,162,75,0.4)" }}>
+          <Check size={26} strokeWidth={3} />
+          <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 800, fontSize: 17 }}>{amount}</div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 /* ---------------- Inventori ---------------- */
@@ -558,7 +676,7 @@ function Inventori({ ctx }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <button onClick={openNew} style={primaryBtn(t)}><Plus size={16} /> Tambah Produk</button>
+      <button onClick={openNew} className="smTap" style={primaryBtn(t)}><Plus size={16} /> Tambah Produk</button>
 
       {produk.length === 0 && <EmptyState text="Belum ada produk. Tambah produk pertama kau." />}
 
@@ -626,11 +744,11 @@ function Input({ label, value, onChange, placeholder, type = "text" }) {
 
 function BottomSheet({ children, onClose, title }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 100 }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: T.surface, width: "100%", maxWidth: 480, borderRadius: "20px 20px 0 0", padding: 20, paddingBottom: 32, maxHeight: "85vh", overflowY: "auto" }}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(2px)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 100, padding: 14, animation: "smFadeIn 0.2s ease" }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "rgba(28,29,32,0.82)", backdropFilter: "blur(26px)", WebkitBackdropFilter: "blur(26px)", border: "1px solid rgba(255,255,255,0.09)", width: "100%", maxWidth: 460, borderRadius: 26, padding: 20, paddingBottom: 28, maxHeight: "85vh", overflowY: "auto", marginBottom: 8, boxShadow: "0 24px 60px rgba(0,0,0,0.45)", animation: "smSheetUp 0.28s cubic-bezier(0.22,1,0.36,1)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <div style={{ fontWeight: 700, fontSize: 16, fontFamily: "'Sora',sans-serif" }}>{title}</div>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: T.ink }}><X size={20} /></button>
+          <button className="smTap" onClick={onClose} style={{ background: "rgba(255,255,255,0.06)", border: "none", borderRadius: 999, width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", color: T.ink }}><X size={17} /></button>
         </div>
         {children}
       </div>
@@ -679,7 +797,7 @@ function Restock({ ctx }) {
             <input type="checkbox" checked={form.updateModal} onChange={(e) => setForm((f) => ({ ...f, updateModal: e.target.checked }))} />
             Kemas kini harga modal produk
           </label>
-          <button onClick={submit} style={primaryBtn(t)}>Simpan Restock</button>
+          <button onClick={submit} className="smTap" style={primaryBtn(t)}>Simpan Restock</button>
         </div>
       </Card>
 
@@ -731,7 +849,7 @@ function Hutang({ ctx }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <button onClick={() => setModal("new")} style={primaryBtn(t)}><Plus size={16} /> Tambah Hutang</button>
+      <button onClick={() => setModal("new")} className="smTap" style={primaryBtn(t)}><Plus size={16} /> Tambah Hutang</button>
       {hutang.length === 0 && <EmptyState text="Tiada rekod hutang." />}
       {sorted.map((h) => {
         const b = baki(h);
@@ -760,7 +878,7 @@ function Hutang({ ctx }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <Input label="Nama pelanggan" value={form.nama} onChange={(v) => setForm((f) => ({ ...f, nama: v }))} placeholder="cth: Ali" />
             <Input label="Jumlah hutang" type="number" value={form.jumlah} onChange={(v) => setForm((f) => ({ ...f, jumlah: v }))} placeholder="20.00" />
-            <button onClick={addHutang} style={primaryBtn(t)}>Simpan</button>
+            <button onClick={addHutang} className="smTap" style={primaryBtn(t)}>Simpan</button>
           </div>
         </BottomSheet>
       )}
@@ -771,7 +889,7 @@ function Hutang({ ctx }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ fontSize: 13, color: t.muted }}>{h.nama} · Baki semasa <b style={{ color: t.red }}>{fmt(baki(h))}</b></div>
               <Input label="Jumlah bayaran" type="number" value={bayarAmt} onChange={setBayarAmt} placeholder="10.00" />
-              <button onClick={() => bayar(h)} style={primaryBtn(t)}>Rekod Bayaran</button>
+              <button onClick={() => bayar(h)} className="smTap" style={primaryBtn(t)}>Rekod Bayaran</button>
             </div>
           ); })()}
         </BottomSheet>
@@ -782,7 +900,7 @@ function Hutang({ ctx }) {
 
 /* ---------------- Laporan ---------------- */
 function Laporan({ ctx }) {
-  const { jualan, restock, expense, hutang, produk, setExpense, addLog, showToast, currentUser, T: t } = ctx;
+  const { jualan, restock, expense, hutang, produk, setExpense, addLog, showToast, currentUser, settings, T: t } = ctx;
   const [period, setPeriod] = useState("harian");
   const [expForm, setExpForm] = useState({ kategori: "", jumlah: "" });
   const [showExpForm, setShowExpForm] = useState(false);
@@ -828,10 +946,11 @@ function Laporan({ ctx }) {
   const periodLabel = { harian: "Hari Ini", mingguan: "7 Hari Lepas", bulanan: "Bulan Ini", tahunan: "Tahun Ini" };
 
   return (
+    <>
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", gap: 8, overflowX: "auto" }}>
         {["harian", "mingguan", "bulanan", "tahunan"].map((p) => (
-          <button key={p} onClick={() => setPeriod(p)} style={{ whiteSpace: "nowrap", padding: "7px 14px", borderRadius: 999, border: `1px solid ${period === p ? t.gold : t.hair}`, background: period === p ? t.goldSoft : "transparent", color: period === p ? t.gold : t.muted, fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>
+          <button key={p} className="smTap" onClick={() => setPeriod(p)} style={{ whiteSpace: "nowrap", padding: "7px 14px", borderRadius: 999, border: `1px solid ${period === p ? t.gold : t.hair}`, background: period === p ? t.goldSoft : "transparent", color: period === p ? t.gold : t.muted, fontSize: 12.5, fontWeight: 700 }}>
             {p[0].toUpperCase() + p.slice(1)}
           </button>
         ))}
@@ -853,12 +972,12 @@ function Laporan({ ctx }) {
         <button onClick={exportCSV} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: t.surface2, border: `1px solid ${t.hair}`, color: t.ink, borderRadius: 10, padding: "10px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
           <Download size={15} /> Eksport Excel
         </button>
-        <button onClick={() => { addLog(`Cetak laporan ${period}`); window.print(); }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: t.surface2, border: `1px solid ${t.hair}`, color: t.ink, borderRadius: 10, padding: "10px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-          <Printer size={15} /> Cetak PDF
+        <button className="smTap" onClick={() => { addLog(`Cetak/simpan PDF laporan ${period}`); setTimeout(() => window.print(), 50); }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: t.surface2, border: `1px solid ${t.hair}`, color: t.ink, borderRadius: 10, padding: "10px", fontWeight: 700, fontSize: 13 }}>
+          <Printer size={15} /> Cetak / Simpan PDF
         </button>
       </div>
 
-      <button onClick={() => setShowExpForm(true)} style={{ ...primaryBtn(t), background: t.surface2, color: t.ink, border: `1px solid ${t.hair}` }}><Plus size={16} /> Tambah Perbelanjaan</button>
+      <button className="smTap" onClick={() => setShowExpForm(true)} style={{ ...primaryBtn(t), background: t.surface2, color: t.ink, border: `1px solid ${t.hair}` }}><Plus size={16} /> Tambah Perbelanjaan</button>
 
       <div style={{ fontSize: 12, color: t.muted, fontWeight: 700 }}>PERBELANJAAN — {periodLabel[period]}</div>
       {eFiltered.length === 0 && <div style={{ fontSize: 12.5, color: t.muted }}>Tiada perbelanjaan direkod.</div>}
@@ -874,11 +993,65 @@ function Laporan({ ctx }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <Input label="Kategori" value={expForm.kategori} onChange={(v) => setExpForm((f) => ({ ...f, kategori: v }))} placeholder="cth: Sewa gerai" />
             <Input label="Jumlah" type="number" value={expForm.jumlah} onChange={(v) => setExpForm((f) => ({ ...f, jumlah: v }))} placeholder="50.00" />
-            <button onClick={addExpense} style={primaryBtn(t)}>Simpan</button>
+            <button onClick={addExpense} className="smTap" style={primaryBtn(t)}>Simpan</button>
           </div>
         </BottomSheet>
       )}
     </div>
+
+    {/* Printable report — hidden on screen, shown only when printing/saving as PDF */}
+    <div className="print-area" style={{ display: "none", padding: 32, fontFamily: "Arial, sans-serif", color: "#111" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, borderBottom: "2px solid #111", paddingBottom: 12, marginBottom: 16 }}>
+        {settings.logo && <img src={settings.logo} style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover" }} />}
+        <div>
+          <div style={{ fontSize: 20, fontWeight: 800 }}>{settings.namaPerniagaan}</div>
+          <div style={{ fontSize: 12, color: "#555" }}>Laporan Perakaunan · {periodLabel[period]} · Dijana {new Date().toLocaleString("ms-MY")}</div>
+        </div>
+      </div>
+
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginBottom: 20 }}>
+        <tbody>
+          <PrintRow label="Jumlah Jualan" value={fmt(totalJualan)} />
+          <PrintRow label="Untung Kasar" value={fmt(untungKasar)} />
+          <PrintRow label="Perbelanjaan" value={"- " + fmt(totalPerbelanjaan)} />
+          <PrintRow label="Untung Bersih" value={fmt(untungBersih)} bold />
+          <PrintRow label="Margin" value={margin.toFixed(1) + "%"} />
+          <PrintRow label="Cash Masuk" value={fmt(cashMasuk)} />
+          <PrintRow label="Cash Keluar" value={fmt(cashKeluar)} />
+          <PrintRow label="Nilai Inventori (Modal)" value={fmt(modal)} last />
+        </tbody>
+      </table>
+
+      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Perbelanjaan — {periodLabel[period]}</div>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+        <thead>
+          <tr style={{ borderBottom: "1px solid #999", textAlign: "left" }}>
+            <th style={{ padding: "4px 0" }}>Tarikh</th><th>Kategori</th><th>Pengguna</th><th style={{ textAlign: "right" }}>Jumlah</th>
+          </tr>
+        </thead>
+        <tbody>
+          {eFiltered.length === 0 && <tr><td colSpan={4} style={{ padding: "8px 0", color: "#777" }}>Tiada perbelanjaan direkod.</td></tr>}
+          {eFiltered.map((e) => (
+            <tr key={e.id} style={{ borderBottom: "1px solid #eee" }}>
+              <td style={{ padding: "4px 0" }}>{dayLabel(e.tarikh)}</td><td>{e.kategori}</td><td>{e.userNama}</td>
+              <td style={{ textAlign: "right" }}>{fmt(e.jumlah)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div style={{ fontSize: 10.5, color: "#999", marginTop: 24 }}>Dijana automatik oleh {settings.namaPerniagaan} Business Management System.</div>
+    </div>
+    </>
+  );
+}
+
+function PrintRow({ label, value, bold, last }) {
+  return (
+    <tr style={{ borderBottom: last ? "none" : "1px solid #eee" }}>
+      <td style={{ padding: "6px 0", color: "#555" }}>{label}</td>
+      <td style={{ padding: "6px 0", textAlign: "right", fontWeight: bold ? 800 : 600 }}>{value}</td>
+    </tr>
   );
 }
 
@@ -887,6 +1060,57 @@ function Row({ label, value, color, bold, last }) {
     <div style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: last ? "none" : `1px solid ${T.hair}` }}>
       <span style={{ fontSize: 13, color: T.muted }}>{label}</span>
       <span style={{ fontSize: 13.5, fontWeight: bold ? 800 : 700, color: color || T.ink }}>{value}</span>
+    </div>
+  );
+}
+
+/* ---------------- Top Pembeli (leaderboard) ---------------- */
+function TopPembeli({ ctx }) {
+  const { jualan, T: t } = ctx;
+  const [q, setQ] = useState("");
+
+  const ranked = useMemo(() => {
+    const map = {};
+    jualan.forEach((j) => {
+      const nama = (j.pembeli || "Tanpa Nama").trim() || "Tanpa Nama";
+      const key = nama.toLowerCase();
+      if (!map[key]) map[key] = { nama, total: 0, kali: 0, lastTarikh: j.tarikh };
+      map[key].total += j.total;
+      map[key].kali += 1;
+      if (j.tarikh > map[key].lastTarikh) map[key].lastTarikh = j.tarikh;
+    });
+    return Object.values(map).sort((a, b) => b.total - a.total);
+  }, [jualan]);
+
+  const filtered = ranked.filter((r) => r.nama.toLowerCase().includes(q.toLowerCase()));
+  const medal = ["🥇", "🥈", "🥉"];
+
+  if (jualan.length === 0) return <EmptyState text="Belum ada jualan lagi untuk dipaparkan." />;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ fontSize: 12, color: t.muted, fontWeight: 700 }}>Ranking ikut jumlah perbelanjaan keseluruhan</div>
+      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari nama pembeli..." style={{ border: `1px solid ${t.hair}`, background: t.surface2, color: t.ink, borderRadius: 10, padding: "10px 12px", fontSize: 13.5, outline: "none" }} />
+
+      {filtered.map((r, i) => {
+        const rank = ranked.indexOf(r);
+        return (
+          <Card key={r.nama} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px" }}>
+            <div style={{ width: 34, textAlign: "center", fontSize: rank < 3 ? 20 : 13, fontWeight: 800, color: rank < 3 ? undefined : t.muted, flexShrink: 0 }}>
+              {rank < 3 ? medal[rank] : `#${rank + 1}`}
+            </div>
+            <div style={{ width: 36, height: 36, borderRadius: 999, background: t.goldSoft, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Sora',sans-serif", fontWeight: 700, color: t.gold, flexShrink: 0 }}>
+              {r.nama[0].toUpperCase()}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{r.nama}</div>
+              <div style={{ fontSize: 11.5, color: t.muted }}>{r.kali}x beli · kali terakhir {dayLabel(r.lastTarikh)}</div>
+            </div>
+            <div style={{ fontWeight: 800, fontSize: 14, color: t.gold, whiteSpace: "nowrap" }}>{fmt(r.total)}</div>
+          </Card>
+        );
+      })}
+      {filtered.length === 0 && <EmptyState text={`Tiada pembeli sepadan "${q}"`} />}
     </div>
   );
 }
@@ -919,8 +1143,20 @@ function SettingsTab({ ctx }) {
   const [nama, setNama] = useState(settings.namaPerniagaan);
   const [modal, setModal] = useState(null); // 'new' user
   const [uform, setUform] = useState({ nama: "", role: "Pekerja", pin: "" });
+  const logoRef = useRef();
 
   const saveName = () => { setSettings((s) => ({ ...s, namaPerniagaan: nama })); addLog("Kemas kini nama perniagaan"); showToast("Disimpan"); };
+
+  const handleLogo = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const b64 = await resizeImage(file, 160, 0.7);
+      setSettings((s) => ({ ...s, logo: b64 }));
+      addLog("Kemas kini logo kedai");
+      showToast("Logo dikemas kini");
+    } catch (err) { showToast("Gagal upload logo"); }
+  };
 
   const addUser = () => {
     if (!uform.nama || uform.pin.length !== 4) return showToast("Nama & PIN 4-digit diperlukan");
@@ -935,6 +1171,19 @@ function SettingsTab({ ctx }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <Card>
+        <div style={{ fontSize: 12, color: t.muted, fontWeight: 700, marginBottom: 10 }}>LOGO KEDAI</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <button onClick={() => logoRef.current.click()} style={{ width: 64, height: 64, borderRadius: 14, background: t.surface2, border: `1px dashed ${t.hair}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", cursor: "pointer", flexShrink: 0 }}>
+            {settings.logo ? <img src={settings.logo} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <ImagePlus size={22} color={t.muted} />}
+          </button>
+          <input ref={logoRef} type="file" accept="image/*" onChange={handleLogo} style={{ display: "none" }} />
+          <div style={{ fontSize: 12, color: t.muted, lineHeight: 1.5 }}>
+            Logo akan muncul kat header app & skrin login.<br />Tap gambar untuk tukar.
+          </div>
+        </div>
+      </Card>
+
       <Card>
         <div style={{ fontSize: 12, color: t.muted, fontWeight: 700, marginBottom: 10 }}>NAMA PERNIAGAAN</div>
         <div style={{ display: "flex", gap: 8 }}>
@@ -967,7 +1216,7 @@ function SettingsTab({ ctx }) {
               </select>
             </label>
             <Input label="PIN 4-digit" value={uform.pin} onChange={(v) => setUform((f) => ({ ...f, pin: v.replace(/\D/g, "").slice(0, 4) }))} placeholder="1234" />
-            <button onClick={addUser} style={primaryBtn(t)}>Simpan</button>
+            <button onClick={addUser} className="smTap" style={primaryBtn(t)}>Simpan</button>
           </div>
         </BottomSheet>
       )}
@@ -985,20 +1234,21 @@ function Drawer({ ctx, tab, setTab, onClose, onLogout }) {
     { id: "restock", label: "Restock", icon: Receipt },
     { id: "hutang", label: "Hutang", icon: Wallet },
     { id: "laporan", label: "Laporan", icon: FileText },
+    { id: "toppembeli", label: "Top Pembeli", icon: TrendingUp },
     ...(isAdmin ? [{ id: "log", label: "Log Aktiviti", icon: Activity }, { id: "settings", label: "Settings", icon: SettingsIcon }] : []),
   ];
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 100 }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 250, background: T.surface, borderRight: `1px solid ${T.hair}`, padding: 18, display: "flex", flexDirection: "column" }}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(2px)", zIndex: 100, animation: "smFadeIn 0.2s ease" }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", left: 12, top: 12, bottom: 12, width: 240, background: "rgba(28,29,32,0.82)", backdropFilter: "blur(26px)", WebkitBackdropFilter: "blur(26px)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 22, padding: 18, display: "flex", flexDirection: "column", boxShadow: "0 20px 50px rgba(0,0,0,0.4)", animation: "smSheetUp 0.25s cubic-bezier(0.22,1,0.36,1)" }}>
         <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 800, fontSize: 16, marginBottom: 18 }}>{ctx.settings.namaPerniagaan}</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1 }}>
           {items.map((it) => (
-            <button key={it.id} onClick={() => { setTab(it.id); onClose(); }} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 12px", borderRadius: 10, background: tab === it.id ? T.goldSoft : "transparent", border: "none", color: tab === it.id ? T.gold : T.ink, cursor: "pointer", fontSize: 13.5, fontWeight: tab === it.id ? 700 : 500, textAlign: "left" }}>
+            <button key={it.id} className="smTap" onClick={() => { setTab(it.id); onClose(); }} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 12px", borderRadius: 12, background: tab === it.id ? T.goldSoft : "transparent", border: "none", color: tab === it.id ? T.gold : T.ink, fontSize: 13.5, fontWeight: tab === it.id ? 700 : 500, textAlign: "left" }}>
               <it.icon size={17} /> {it.label}
             </button>
           ))}
         </div>
-        <button onClick={onLogout} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", background: "none", border: `1px solid ${T.hair}`, borderRadius: 10, color: T.red, cursor: "pointer", fontSize: 13.5, fontWeight: 700 }}>
+        <button className="smTap" onClick={onLogout} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", background: "rgba(229,83,75,0.08)", border: "1px solid rgba(229,83,75,0.25)", borderRadius: 12, color: T.red, fontSize: 13.5, fontWeight: 700 }}>
           <LogOut size={16} /> Log Keluar
         </button>
       </div>
@@ -1014,14 +1264,14 @@ function SearchOverlay({ ctx, setTab, onClose }) {
     ...hutang.filter((h) => h.nama.toLowerCase().includes(q.toLowerCase())).map((h) => ({ type: "Hutang", label: h.nama, sub: fmt(h.jumlah), go: "hutang" })),
   ] : [];
   return (
-    <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 100, padding: 16, display: "flex", flexDirection: "column" }}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(11,12,13,0.6)", backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)", zIndex: 100, padding: 16, display: "flex", flexDirection: "column", animation: "smFadeIn 0.2s ease" }}>
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 16 }}>
-        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari produk, hutang..." style={{ flex: 1, border: `1px solid ${t.hair}`, background: t.surface2, color: t.ink, borderRadius: 10, padding: "12px 14px", fontSize: 14, outline: "none" }} />
-        <button onClick={onClose} style={{ background: "none", border: "none", color: t.ink, cursor: "pointer" }}><X size={22} /></button>
+        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari produk, hutang..." style={{ flex: 1, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.06)", color: t.ink, borderRadius: 12, padding: "12px 14px", fontSize: 14, outline: "none" }} />
+        <button className="smTap" onClick={onClose} style={{ background: "rgba(255,255,255,0.06)", border: "none", borderRadius: 999, width: 36, height: 36, color: t.ink }}><X size={20} /></button>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {results.map((r, i) => (
-          <button key={i} onClick={() => { setTab(r.go); onClose(); }} style={{ display: "flex", justifyContent: "space-between", background: t.surface, border: `1px solid ${t.hair}`, borderRadius: 12, padding: "12px 14px", color: t.ink, cursor: "pointer", textAlign: "left" }}>
+          <button key={i} className="smTap" onClick={() => { setTab(r.go); onClose(); }} style={{ display: "flex", justifyContent: "space-between", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "12px 14px", color: t.ink, textAlign: "left" }}>
             <div><div style={{ fontWeight: 700, fontSize: 13.5 }}>{r.label}</div><div style={{ fontSize: 11, color: t.muted }}>{r.type}</div></div>
             <div style={{ fontSize: 13, color: t.gold, fontWeight: 700 }}>{r.sub}</div>
           </button>
@@ -1034,14 +1284,14 @@ function SearchOverlay({ ctx, setTab, onClose }) {
 
 function NotifOverlay({ notifs, onDismiss, onClose }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 100, display: "flex", justifyContent: "center" }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", top: 70, right: 16, width: 280, background: T.surface, border: `1px solid ${T.hair}`, borderRadius: 14, padding: 12, maxHeight: "60vh", overflowY: "auto" }}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(2px)", zIndex: 100, display: "flex", justifyContent: "center", animation: "smFadeIn 0.2s ease" }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", top: 70, right: 16, width: 280, background: "rgba(28,29,32,0.82)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 18, padding: 12, maxHeight: "60vh", overflowY: "auto", boxShadow: "0 20px 50px rgba(0,0,0,0.4)", animation: "smSheetUp 0.22s cubic-bezier(0.22,1,0.36,1)" }}>
         <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Notifikasi</div>
         {notifs.length === 0 && <div style={{ fontSize: 12.5, color: T.muted, padding: "8px 0" }}>Tiada notifikasi baharu.</div>}
         {notifs.map((n) => (
-          <div key={n.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 4px", borderBottom: `1px solid ${T.hair}` }}>
+          <div key={n.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 4px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}><AlertTriangle size={14} color={T.gold} /><span style={{ fontSize: 12.5 }}>{n.text}</span></div>
-            <button onClick={() => onDismiss(n.id)} style={{ background: "none", border: "none", color: T.muted, cursor: "pointer" }}><X size={14} /></button>
+            <button className="smTap" onClick={() => onDismiss(n.id)} style={{ background: "none", border: "none", color: T.muted }}><X size={14} /></button>
           </div>
         ))}
       </div>
@@ -1060,12 +1310,12 @@ function QuickActions({ ctx, setTab, onClose }) {
     ...(isAdmin ? [{ label: "Tambah Pengguna", icon: Users, go: "settings" }] : []),
   ];
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: T.surface, width: "100%", maxWidth: 480, borderRadius: "20px 20px 0 0", padding: 20, paddingBottom: 32 }}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(2px)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 14, animation: "smFadeIn 0.2s ease" }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "rgba(28,29,32,0.78)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,0.09)", width: "100%", maxWidth: 440, borderRadius: 26, padding: 20, paddingBottom: 24, marginBottom: 76, boxShadow: "0 24px 60px rgba(0,0,0,0.45)", animation: "smSheetUp 0.28s cubic-bezier(0.22,1,0.36,1)" }}>
         <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14, fontFamily: "'Sora',sans-serif" }}>Tindakan Pantas</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {actions.map((a) => (
-            <button key={a.label} onClick={() => { setTab(a.go); onClose(); }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "16px 8px", background: T.surface2, border: `1px solid ${T.hair}`, borderRadius: 14, color: T.ink, cursor: "pointer" }}>
+            <button key={a.label} className="smTap" onClick={() => { setTab(a.go); onClose(); }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "16px 8px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, color: T.ink }}>
               <a.icon size={20} color={T.gold} />
               <span style={{ fontSize: 12, fontWeight: 600, textAlign: "center" }}>{a.label}</span>
             </button>
