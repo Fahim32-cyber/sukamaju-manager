@@ -1,8 +1,8 @@
 // Storage guna Supabase — semua device (laptop, iPad, phone) share DATA SAMA
 // secara real-time (perlukan internet untuk save/load).
 
-const SUPABASE_URL = "https://qnqfraylpixiinasvsxt.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFucWZyYXlscGl4aWluYXN2c3h0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzMjA1MDIsImV4cCI6MjA5OTg5NjUwMn0.6mzSH6H2Dzjq0-FQE6-Mkt0_o3uk8qJza9s8PkkM1oY";
+const SUPABASE_URL = "https://gqvsduowzefnusjonblp.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxdnNkdW93emVmbnVzam9uYmxwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NjIsImV4cCI6MjEwMDEwNjc2Mn0.37QPGA8iaTgPbIVM8gSnT4kJ0ciKWBXr3Rvn10oyQDw";
 
 const headers = {
   apikey: SUPABASE_KEY,
@@ -16,7 +16,10 @@ window.storage = {
       `${SUPABASE_URL}/rest/v1/app_storage?key=eq.${encodeURIComponent(key)}&select=value`,
       { headers }
     );
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error("Supabase GET failed", res.status, await res.text());
+      return null;
+    }
     const rows = await res.json();
     if (!rows.length) return null;
     return { key, value: rows[0].value, shared: false };
@@ -28,7 +31,10 @@ window.storage = {
       headers: { ...headers, Prefer: "resolution=merge-duplicates" },
       body: JSON.stringify({ key, value }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error("Supabase SET failed", res.status, await res.text());
+      return null;
+    }
     return { key, value, shared: false };
   },
 
